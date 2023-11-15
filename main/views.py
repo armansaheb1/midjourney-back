@@ -22,22 +22,6 @@ CALL_BACK = "http://172.93.231.240/api/verify"
 
 class send_request(APIView):
     def post(self, request, format=None):
-        if request.data['amount'] == 100000:
-                charge = Package(user=request.user, amount = 50)
-                charge.save()
-        elif request.data['amount'] == 200000:
-            charge = Package(user=request.user, amount = 150)
-            charge.save()
-        elif request.data['amount'] == 800000:
-            charge = Package(user=request.user, amount = 1000)
-            charge.save()
-        trans = Transaction(user = request.user, amount = request.data['amount'])
-        trans.save()
-        balance = 0
-        for item in Package.objects.filter(user= request.user, expired=False):
-            balance = balance + item.amount
-        return Response(balance)
-        #main
         plans = [100000,200000,800000]
         if not request.data['amount'] in plans:
             return Response('Invalid input')
@@ -97,6 +81,7 @@ def verify(authority):
             balance = 0
             for item in Package.objects.filter(user= pre.user, expired=False):
                 balance = balance + item.amount
+            return Response(balance)
             return redirect('http://localhost:8080/success')
             return {'status': True, 'RefID': response['RefID']}
         else:
