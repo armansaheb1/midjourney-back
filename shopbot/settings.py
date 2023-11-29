@@ -4,7 +4,7 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-ROOT = "http://172.93.231.240/"
+ROOT = "https://www.limoo.ai/"
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -27,18 +27,28 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+
     'main',
     'rest_framework',
     'rest_framework.authtoken',
     'djoser',
-    'corsheaders'
+    'corsheaders',
+    'dj_rest_auth',
+    'django_rest_passwordreset',
+    'openai'
+
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "http://172.93.231.240",
     "http://localhost:8080",
-    "https://limoo.ai/",
-    "https://www.limoo.ai/",
+    "https://limoo.ai",
+    "https://www.limoo.ai",
 ]
 
 
@@ -51,6 +61,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'shopbot.urls'
@@ -89,18 +100,7 @@ DATABASES = {
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+
 ]
 
 
@@ -132,27 +132,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATIC_ROOT  = os.path.join(BASE_DIR, 'static')
 
 
-
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'mail.devsduel.ir'
-EMAIL_USE_SSL = False
-EMAIL_USE_TLS = False
+EMAIL_HOST = 'smtp.gmail.com'
+#EMAIL_USE_SSL = True
+EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = 'armansaheb@devsduel.ir'
-EMAIL_HOST_PASSWORD = 'KW(2cd%@ss]^'
-
-
+EMAIL_HOST_USER = 'armansaheb94@gmail.com'
+EMAIL_HOST_PASSWORD = 'gnuyumaspsxgvhel'
 
 '''
+
 EMAIL_BACKEND = 'django_imap_backend.ImapBackend'
 EMAIL_IMAP_SECRETS = [
     {
-        'HOST': 'mail.devsduel.ir',
-        'PORT': 143,  # default 143 and for SSL 993
-        'USER': 'armansaheb@devsduel.ir',
-        'PASSWORD': 'KW(2cd%@ss]^',
-        'MAILBOX': 'my_project',  # Created if not exists
-        'SSL': False  # Default
+        'HOST': 'smtp.gmail.com',
+        'PORT': 587,  # default 143 and for SSL 993
+        'USER': 'armansaheb94@gmail.com',
+        'PASSWORD': 'gnuyumaspsxgvhel',
+        'MAILBOX': 'limoo',  # Created if not exists
+        'SSL': True  # Default
     }
 ]
 '''

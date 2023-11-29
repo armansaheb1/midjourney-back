@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import ImagineOrder, Image, Transaction
+from .models import ImagineOrder, Image, Transaction, FaceSwaped, Plan, Bonus
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -9,6 +9,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id',
             'username',
             'email',
+            'is_superuser'
         )
 
 class ImagineOrderSerializer(serializers.ModelSerializer):
@@ -17,6 +18,7 @@ class ImagineOrderSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "user", 
+            "username",
             "text",
             "date",
             "code",
@@ -26,6 +28,7 @@ class ImagineOrderSerializer(serializers.ModelSerializer):
             "image",
             "get_age",
             "get_variations",
+            "act",
             "bid",
             "buttons",
             "type"
@@ -51,4 +54,37 @@ class TransactionSerializer(serializers.ModelSerializer):
             "username",
             "get_age"
 
+        )
+
+
+class FaceSwapedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FaceSwaped
+        fields = (
+            "user", 
+            "username",
+            "fsid", 
+            "image", 
+            "get_age"
+        )
+
+class PlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Plan
+        fields = (
+            "id", 
+            "price", 
+            "coin", 
+        )
+
+
+class BonusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Bonus
+        fields = (
+            "id",
+            "user",
+            "username", 
+            "code", 
+            "amount", 
         )
