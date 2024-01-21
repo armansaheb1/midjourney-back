@@ -1,11 +1,11 @@
 from django.shortcuts import render
-from .models import ImagineOrder, Package, Pretrans, Image, Transaction, FaceSwaped, Plan, Bonus, Coupon, UsedBonus
+from .models import ImagineOrder, Package, Pretrans, Image, Transaction, FaceSwaped, Plan, Bonus, Coupon, UsedBonus, GPTChatRoom, GPTMessages, ImageDetail, AddDetail, Mimic, Parameter, Size, Post, Permissions
 from django.contrib.auth.models import User
 import requests
 import json
 from rest_framework.views import APIView 
 from rest_framework.response import Response
-from .serializers import UserSerializer, ImagineOrderSerializer, ImageSerializer, FaceSwapedSerializer, PlanSerializer
+from .serializers import UserSerializer, ImagineOrderSerializer, ImageSerializer, FaceSwapedSerializer, PlanSerializer, GPTMessagesSerializer, GPTChatRoomSerializer, OptionSerializer, ParamSerializer, PostSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.conf import settings
 import requests
@@ -29,17 +29,21 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 
 from django_rest_passwordreset.signals import reset_password_token_created
-
+import random
+from langchain.chat_models import ChatOpenAI
+from langchain.document_loaders import DirectoryLoader
+from langchain.indexes import VectorstoreIndexCreator
 from openai import OpenAI
-gpt_client = OpenAI(api_key= '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')
+from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, LLMPredictor, ServiceContext, StorageContext, load_index_from_storage, PromptHelper
 
+import os
+os.environ['OPENAI_API_KEY'] = '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'
 
-
-
+gpt_client = OpenAI(api_key= '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')
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
-    # send an e-mail to the user
+    
     context = {
         'current_user': reset_password_token.user,
         'username': reset_password_token.user.username,
@@ -50,59 +54,34 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
         'token' : reset_password_token.key
     }
 
-    # render email text
+    
     email_html_message = render_to_string('email/password_reset_email.html', context)
     email_plaintext_message = render_to_string('email/password_reset_email.txt', context)
 
     msg = EmailMultiAlternatives(
-        # title:
+        
         "Password Reset for {title}".format(title="Some website title"),
-        # message:
+        
         email_plaintext_message,
-        # from:
+        
         "noreply@somehost.local",
-        # to:
+        
         [reset_password_token.user.email]
     )
     msg.attach_alternative(email_html_message, "text/html")
     msg.send()
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
-
+'''
 MERCHANT = '96e3a7b9-66ef-4abb-9c7b-8f699d4237bc'
 ZP_API_REQUEST = "https://www.zarinpal.com/pg/rest/WebGate/PaymentRequest.json"
 ZP_API_VERIFY = "https://www.zarinpal.com/pg/rest/WebGate/PaymentVerification.json"
 ZP_API_STARTPAY = "https://www.zarinpal.com/pg/StartPay/"
 CALL_BACK = "http://limoo.ai/api/verify"
-
-class vpn(APIView):
-    permission_classes = [AllowAny]
+'''
 
 
-    def get(self, request, ss):
-        with open('/midjourney-back/main/a.csv','r') as myfile:
-            response = HttpResponse(myfile, content_type='text/csv')
-            response['Content-Disposition'] = 'attachment; filename=a.csv'
-            return response
-
-class vpn2(APIView):
-    permission_classes = [AllowAny]
-
-
-    def get(self, request, ss):
-        passed = str(base64.b64decode("Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTplMDVCVFkwcG8ya3o3ckplTTJWRVdn"))
-        passed = passed.replace("b'", "").replace("'", "")
-        passeds = passed.split(':')
-        return JsonResponse({
-            
-            "server": "nl.xray.services",
-            "server_port": 18781,
-            "password": passeds[1],
-            "method": passeds[0]
-            })
-
-
-
+'''
 class send_request(APIView):
     def post(self, request, format=None):
         if not len(Plan.objects.filter(id = request.data['amount'] )):
@@ -115,7 +94,7 @@ class send_request(APIView):
             "CallbackURL": CALL_BACK,
         }
         data = json.dumps(data)
-        # set content length by data
+        
         headers = {'content-type': 'application/json', 'content-length': str(len(data)) }
         try:
             response = requests.post(ZP_API_REQUEST, data=data,headers=headers, timeout=10)
@@ -134,39 +113,72 @@ class send_request(APIView):
             return {'status': False, 'code': 'timeout'}
         except requests.exceptions.ConnectionError:
             return {'status': False, 'code': 'connection error'}
+'''
+
+PP_MERCHANT = 'CPgw7kQ75fjMZ496hkROyEiX_ki9aeonPKErbOlzqRQ'
+PP_API_REQUEST = "https://api.payping.ir/v2/pay"
+PP_API_VERIFY = "https://api.payping.ir/v2/pay/verify"
+PP_API_STARTPAY = "https://api.payping.ir/v2/pay/gotoipg/"
+PP_CALL_BACK = "https://limoo.ai/api/verify"
+
+class send_request(APIView):
+    def post(self, request, format=None):
+        if not len(Plan.objects.filter(id = int(request.data['amount']) )):
+            return Response('Invalid input')
+        plan = Plan.objects.get(id = request.data['amount'] )
+        rand = random.randint(123456, 999999)
+        data = {
+            "amount": plan.price,
+            "returnUrl": PP_CALL_BACK,
+            "clientRefId": rand
+        }
+        data = json.dumps(data)
+        
+        headers = {'content-type': 'application/json', 'content-length': str(len(data)), "Authorization":'Bearer ' + PP_MERCHANT}
+        try:
+            response = requests.post(PP_API_REQUEST, data=data,headers=headers, timeout=10)
+
+            if response.status_code == 200:
+                response = response.json()
+                pre = Pretrans(amount= plan.price, code= rand, user=request.user)
+                pre.save()
+                return Response(PP_API_STARTPAY + str(response['code']))
+            return Response({'status': False, 'code': 'timeout'})
+        
+        except requests.exceptions.Timeout:
+            return {'status': False, 'code': 'timeout'}
+        except requests.exceptions.ConnectionError:
+            return {'status': False, 'code': 'connection error'}
 
 class verify(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request):
-        Authority = request.GET.get('Authority', '')
+    def post(self, request):
+        Authority = request.data['clientrefid']
         pre = Pretrans.objects.get(code = Authority)
+        plan = Plan.objects.get(price = pre.amount )
         data = {
-            "MerchantID": MERCHANT,
-            "Amount": pre.amount,
-            "Authority": Authority,
+            "refId": request.data['refid'],
+            "amount": plan.price,
         }
         data = json.dumps(data)
-        headers = {'content-type': 'application/json', 'content-length': str(len(data)) }
-        response = requests.post(ZP_API_VERIFY, data=data,headers=headers)
+        headers = {'content-type': 'application/json', 'content-length': str(len(data)), "Authorization":'Bearer ' + PP_MERCHANT}
+        response = requests.post(PP_API_VERIFY, data=data,headers=headers)
 
         if response.status_code == 200:
             response = response.json()
-            if response['Status'] == 100:
-                if not len(Plan.objects.filter(price = pre.amount )):
-                    return Rsponse('invalid transaction')
-                else:
-                    plan = Plan.objects.get(price = pre.amount )
-                    charge = Package(user=pre.user, amount = plan.coin)
-                    charge.save()
-                    trans = Transaction(user = pre.user, amount = pre.amount)
-                    trans.save()
-                    return redirect('https://limoo.ai/success')
+            if not len(Plan.objects.filter(price = pre.amount )):
+                return Rsponse('invalid transaction')
             else:
-                return Response({'status': False, 'code': str(response['Status'])})
+                
+                charge = Package(user=pre.user, amount = plan.coin)
+                charge.save()
+                trans = Transaction(user = pre.user, amount = pre.amount)
+                trans.save()
+                return redirect('https://limoo.ai/success')
         else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)  
-# Create your views here.
+            return Response(response,status=status.HTTP_400_BAD_REQUEST)  
+
 
 class GetUser(APIView):
     permission_classes = [IsAuthenticated]
@@ -189,35 +201,42 @@ class Imagine(APIView):
         if balance == 1:
             if len(ImagineOrder.objects.filter(user = request.user, done= False)):
                 return Response('You Have A Pending order And موجودی شما کافی نیست for Another One',status = status.HTTP_402_PAYMENT_REQUIRED)
-        url = "https://api.thenextleg.io/v2/imagine"
+        url = "https://api.mymidjourney.ai/api/v1/midjourney/imagine"
         payload = json.dumps({
-        "msg": request.data['text'],
-        "ref": "",
-        "webhookOverride": "", 
-        "ignorePrefilter": "false"
+        "prompt": request.data['text'],
         })
         headers = {
-        'Authorization': 'Bearer 3c64be29-a698-4a52-976f-b2dfb9ca08b0',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODQwMSwiZW1haWwiOiJsbGltb29haUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImxsaW1vb2FpQGdtYWlsLmNvbSIsImlhdCI6MTcwNTYwOTY3NH0.V17JuXug9v8klMenrpw6OGTiVsU8LANrHPBpD9IoCjI',
         'Content-Type': 'application/json'
         }
         response = requests.request("POST", url, headers=headers, data=payload)
-        if response.json()['messageId']:
-            imagine = ImagineOrder(user=request.user,text = request.data['text'], code=response.json()['messageId'])
-            imagine.save()
-            serializer = ImagineOrderSerializer(imagine)
-            return Response(serializer.data)        
-        return Response(status=status.HTTP_400_BAD_REQUEST)   
+        try:
+            if response.json()['success']:
+                imagine = ImagineOrder(user=request.user,text = request.data['text'], code=response.json()['messageId'])
+                imagine.save()
+                serializer = ImagineOrderSerializer(imagine)
+                return Response(serializer.data)      
+            else:
+                return Response(response,status=status.HTTP_400_BAD_REQUEST)  
+        except Exception as inst:
+            return Response(response,status=status.HTTP_400_BAD_REQUEST)
 
 
 
 class Gpt(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get_text(text, model="text-embedding-ada-002"):
-            client.completions.create(
-            model="gpt-4.5-turbo-instruct",
-            prompt="Write a tagline for an ice cream shop."
-        )
+    def get_text(self, text):
+            return gpt_client.chat.completions.create(
+            model="gpt-4-1106-preview",
+            messages=text)
+
+    def get(self, text, ids):
+        room = GPTChatRoom.objects.get(id = ids)
+        query = GPTMessages.objects.filter(room = room)
+        serializer = GPTMessagesSerializer(query, many=True)
+        
+        return Response({'result': serializer.data, 'id': ids}) 
     
     def post(self, request, format=None):
         balance = 0
@@ -228,37 +247,64 @@ class Gpt(APIView):
             return Response('موجودی شما کافی نیست',status = status.HTTP_402_PAYMENT_REQUIRED)
         if balance == 1:
             if len(ImagineOrder.objects.filter(user = request.user, done= False)):
-                return Response('You Have A Pending order And موجودی شما کافی نیست for Another One',status = status.HTTP_402_PAYMENT_REQUIRED)
-        
-        response = requests.request("POST", url, headers=headers, data=payload)
-        if response.json()['messageId']:
-            imagine = ImagineOrder(user=request.user,text = request.data['text'], code=response.json()['messageId'])
-            imagine.save()
-            serializer = ImagineOrderSerializer(imagine)
-            return Response(serializer.data)        
-        return Response(status=status.HTTP_400_BAD_REQUEST)   
+                return Response('You Have A Pending order And  Your Balance Is Not Enough for Another One',status = status.HTTP_402_PAYMENT_REQUIRED)
+        per, create = Permissions.objects.get_or_create(user = request.user)
+        if not per.gpt:
+            return Response('This Is Not Enable For You',status = status.HTTP_402_PAYMENT_REQUIRED)
+        lists = [{"role": "system", "content": "You are a helpful assistant."}]
+        if not 'id' in request.data:
+            room = GPTChatRoom(user= request.user, first_message = request.data['text'])
+            room.save()
+        else:
+            room = GPTChatRoom.objects.get(id= request.data['id'])
+        message = GPTMessages(room = room, message = request.data['text'], role = 'user')
+        message.save()
+        for item in GPTMessages.objects.filter(room = room):
+            lists.append( {"role": item.role, "content": item.message})
+        lists.append({"role": 'user', "content": request.data['text']})
+        try:
+            result = self.get_text(lists)
+            message = GPTMessages(room = room, message = result.choices[0].message.content, role = result.choices[0].message.role)
+            message.save()
+            wal = wals.first()
+            if (result.usage.total_tokens/ 1000 > wal.amount):
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            wal.amount = wal.amount - (result.usage.total_tokens/ 1000)
+            wal.save()
+            query = GPTMessages.objects.filter(room = room)
+            serializer = GPTMessagesSerializer(query, many=True)
+            
+            return Response({'result': serializer.data, 'id': room.id}) 
+        except Exception as error:
+            return Response(str(error),status=status.HTTP_400_BAD_REQUEST)   
+
+class MyGPT(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        query = GPTChatRoom.objects.filter(user = request.user).order_by('-id')
+        serializer = GPTChatRoomSerializer(query, many=True)
+        return Response(serializer.data)
 
 
-
-class ImagineArs(APIView):
+class Support(APIView):
     permission_classes = [AllowAny]
-    
-    def post(self, request, format=None):
-        url = "https://api.thenextleg.io/v2/imagine"
-        payload = json.dumps({
-        "msg": request.data['text'],
-        "ref": "",
-        "webhookOverride": "", 
-        "ignorePrefilter": "false"
-        })
-        headers = {
-        'Authorization': 'Bearer 3c64be29-a698-4a52-976f-b2dfb9ca08b0',
-        'Content-Type': 'application/json'
-        }
-        response = requests.request("POST", url, headers=headers, data=payload)      
-        return Response(response.json()['messageId'])   
 
-
+    def post(self, request):
+        max_input_size = 4096
+        num_outputs = 512
+        max_chunk_overlap = 0.2
+        chunk_size_limit = 600
+        prompt_helper = PromptHelper(max_input_size, num_outputs, max_chunk_overlap, chunk_size_limit=chunk_size_limit)
+        llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0.1, model_name="text-babbage-001", max_tokens=num_outputs))
+        documents = SimpleDirectoryReader('/midjourney-back/media/train').load_data()
+        service_context = ServiceContext.from_defaults(llm_predictor=llm_predictor, prompt_helper=prompt_helper)
+        index = GPTVectorStoreIndex.from_documents(documents, service_context=service_context)
+        index.storage_context.persist(persist_dir='/midjourney-back/media/train/done')
+        storage_context = StorageContext.from_defaults(persist_dir='/midjourney-back/media/train/done')
+        index = load_index_from_storage(storage_context)
+        response = index.as_query_engine().query(request.data['text'])
+        return Response(response.response) 
 
 class FaceSwap(APIView):
     permission_classes = [IsAuthenticated]
@@ -276,11 +322,11 @@ class FaceSwap(APIView):
         if balance < 4:
             return Response('موجودی شما کافی نیست',status = status.HTTP_402_PAYMENT_REQUIRED)
         else:
-            url = "https://api.thenextleg.io/face-swap"
+            url = "https://api.mymidjourney.ai/api/v1/midjourney/faceswap"
 
             payload = json.dumps({
-            "sourceImg": request.data['text'][0],
-            "targetImg": request.data['text'][1],
+            "source": request.data['text'][0],
+            "target": request.data['text'][1],
             })
             
             headers = {
@@ -294,6 +340,7 @@ class FaceSwap(APIView):
                 wal = wals.first()
                 wal.amount = wal.amount - 4
                 wal.save()
+                res = response
                 response = response.content
                 image = IM.open(BytesIO(response))
                 image.save('/midjourney-back/media/fs/' + filename + '.jpg') 
@@ -304,7 +351,7 @@ class FaceSwap(APIView):
 
                 return Response(serializer.data)    
             else:
-                return Response(response.content,status=status.HTTP_400_BAD_REQUEST) 
+                return Response(response,status=status.HTTP_400_BAD_REQUEST) 
                     
 
 
@@ -312,58 +359,55 @@ class ImagineResult(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request, ids):
+        if not request.user.is_authenticated:
+            query = ImagineOrder.objects.filter(code = ids)
+            item = query.last()
+            url = "https://api.mymidjourney.ai/api/v1/midjourney/message/"
+            headers = {
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODQwMSwiZW1haWwiOiJsbGltb29haUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImxsaW1vb2FpQGdtYWlsLmNvbSIsImlhdCI6MTcwNTYwOTY3NH0.V17JuXug9v8klMenrpw6OGTiVsU8LANrHPBpD9IoCjI',
+            'Content-Type': 'application/json'
+            }
+
+            response = requests.request("GET", url + item.code, headers=headers)
+            response = response.json()
+            return Response(response)
         wals = Package.objects.filter(user=request.user , expired = False, amount__gte=1)
         query = ImagineOrder.objects.filter(code = ids)
-        if len(query):
+        if len(query) and query.last().progress == 100:
             if query.last().image:
                 serializer = ImagineOrderSerializer(query.last())
                 return Response(serializer.data)
         item = query.last()
-        url = "https://api.thenextleg.io/v2/message/"
+        url = "https://api.mymidjourney.ai/api/v1/midjourney/message/"
         headers = {
-        'Authorization': 'Bearer 3c64be29-a698-4a52-976f-b2dfb9ca08b0',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODQwMSwiZW1haWwiOiJsbGltb29haUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImxsaW1vb2FpQGdtYWlsLmNvbSIsImlhdCI6MTcwNTYwOTY3NH0.V17JuXug9v8klMenrpw6OGTiVsU8LANrHPBpD9IoCjI',
         'Content-Type': 'application/json'
         }
 
         response = requests.request("GET", url + item.code, headers=headers)
         response = response.json()
-        if not 'imageUrl' in response['response']:
-            item.percent = response['progress']
-            item.progress = response['progress']
-        elif len(response['response']['imageUrl']):
-            wal = wals.first()
-            wal.amount = wal.amount - 1
-            wal.save()
-            item.result = response['response']['imageUrls']
-            item.image = response['response']['imageUrl']
-            item.done = True
-            item.bid =response['response']['buttonMessageId']
-            item.percent = response['progress']
-            item.buttons = response['response']['buttons']
+        if not 'uri' in response:
+            if not 'progress' in response:
+                item.progress = 'incomplete'
+                item.done = True
+            elif response['progress'] == 'incomplete':
+                item.percent = response['progress']
         else:
-            item.progress = 'Incomplete'
-            item.done = True
+            if response['progress'] == 100:
+                wal = wals.first()
+                wal.amount = wal.amount - 1
+                wal.save()
+            item.result = [response['uri']]
+            item.image = response['uri']
+            if response['progress'] == 100:
+                item.done = True
+            item.bid =response['messageId']
+            item.percent = response['progress']
+            if 'buttons' in response:
+                item.buttons = response['buttons']
         item.save()
         serializer = ImagineOrderSerializer(item)
         return Response(serializer.data)
-
-class ImagineResultArs(APIView):
-    permission_classes = [AllowAny]
-    
-    def get(self, request, ids):
-
-        url = "https://api.thenextleg.io/v2/message/"
-        headers = {
-        'Authorization': 'Bearer 3c64be29-a698-4a52-976f-b2dfb9ca08b0',
-        'Content-Type': 'application/json'
-        }
-
-        response = requests.request("GET", url + ids, headers=headers)
-        response = response.json()
-        if 'imageUrls' in response['response']:
-            return Response(response['response']['imageUrls'])
-        else:
-            return Response(response['progress'])
 
 class Button(APIView):
     permission_classes = [AllowAny]
@@ -375,16 +419,14 @@ class Button(APIView):
             balance = balance + item.amount
         if balance == 0:
             return Response('موجودی شما کافی نیست',status = status.HTTP_402_PAYMENT_REQUIRED)
-        url = "https://api.thenextleg.io/v2/button"
+        url = "https://api.mymidjourney.ai/api/v1/midjourney/button"
 
         payload = json.dumps({
-        "buttonMessageId": f"{request.data['code']}",
+        "messageId": f"{request.data['code']}",
         "button": f"{request.data['btn']}",
-        "ref": "",
-        "webhookOverride": ""
         })
         headers = {
-        'Authorization': 'Bearer 3c64be29-a698-4a52-976f-b2dfb9ca08b0',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODQwMSwiZW1haWwiOiJsbGltb29haUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImxsaW1vb2FpQGdtYWlsLmNvbSIsImlhdCI6MTcwNTYwOTY3NH0.V17JuXug9v8klMenrpw6OGTiVsU8LANrHPBpD9IoCjI',
         'Content-Type': 'application/json'
         }
 
@@ -406,6 +448,7 @@ class MyImagine(APIView):
         query = ImagineOrder.objects.filter(user = request.user, order=None).order_by('-id')
         serializer = ImagineOrderSerializer(query, many=True)
         return Response(serializer.data)
+
 
 class MyFaceSwap(APIView):
     permission_classes = [IsAuthenticated]
@@ -485,3 +528,65 @@ class GetBonus(APIView):
         for item in Package.objects.filter(user= request.user, expired=False):
             balance = balance + item.amount
         return Response(balance)
+
+
+class ImageDetails(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        query = ImageDetail.objects.all()
+        serializer = OptionSerializer(query, many=True)
+        return Response(serializer.data)
+
+
+class AddDetails(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        query = AddDetail.objects.all()
+        serializer = OptionSerializer(query, many=True)
+        return Response(serializer.data)
+
+
+class Mimics(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        query = Mimic.objects.all()
+        serializer = OptionSerializer(query, many=True)
+        return Response(serializer.data)
+
+
+class Parameters(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        query = Parameter.objects.all()
+        serializer = ParamSerializer(query, many=True)
+        return Response(serializer.data)
+
+
+class Sizes(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        query = Size.objects.all()
+        serializer = OptionSerializer(query, many=True)
+        return Response(serializer.data)
+
+
+class Posts(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        query = Post.objects.all()
+        for item in query:
+            if len(item.content) > 1500:
+                item.content = item.content[:1500] + ' ...'
+        serializer = PostSerializer(query, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request, id):
+        query = Post.objects.get(id = id)
+        serializer = PostSerializer(query)
+        return Response(serializer.data)

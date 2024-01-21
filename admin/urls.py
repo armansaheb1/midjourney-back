@@ -10,6 +10,7 @@ urlpatterns = [
     path('plans', views.Plans.as_view(), name="user"),
     path('plans/<ids>', views.Plans.as_view(), name="Plans"),
     path('bonus', views.Bonuss.as_view(), name="user"),
+    path('gptp/<id>', views.Gptp.as_view(), name="user"),
     path('bonus/<ids>', views.Bonuss.as_view(), name="bonus"),
     path('faceswap', views.FaceSwap.as_view(), name="user"),
 ]

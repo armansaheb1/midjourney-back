@@ -16,7 +16,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['172.93.231.240', 'limoo.ai', 'www.limoo.ai']
 
-
+from datetime import timedelta
 # Application definition
 
 
@@ -40,8 +40,11 @@ INSTALLED_APPS = [
     'corsheaders',
     'dj_rest_auth',
     'django_rest_passwordreset',
-    'openai'
-
+    'openai',
+    'ckeditor',
+    'django.forms',
+    "rest_framework_simple_api_key",
+    "ApiService"
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -50,7 +53,9 @@ CORS_ALLOWED_ORIGINS = [
     "https://limoo.ai",
     "https://www.limoo.ai",
 ]
+CORS_ALLOW_ALL_ORIGINS = True
 
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -65,11 +70,11 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'shopbot.urls'
-
+FORM_RENDERER = 'django.forms.renderers.TemplatesSetting'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates'), ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -133,12 +138,12 @@ STATIC_ROOT  = os.path.join(BASE_DIR, 'static')
 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = 'smtp-relay.brevo.com'
 #EMAIL_USE_SSL = True
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = 'armansaheb94@gmail.com'
-EMAIL_HOST_PASSWORD = 'gnuyumaspsxgvhel'
+EMAIL_HOST_USER = 'ali.sharafi85@gmail.com'
+EMAIL_HOST_PASSWORD = 'S8aVrQjUYJODxI5B'
 
 '''
 
@@ -181,4 +186,28 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated', 
     )
+}
+CKEDITOR_UPLOAD_PATH = MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+CKEDITOR_BASEPATH = os.path.join(BASE_DIR, 'static/ckeditor/ckeditor/')
+
+CKEDITOR_FILENAME_GENERATOR = 'utils.get_filename'
+
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar': 'full',
+
+    },
+}
+from ckeditor_uploader.widgets import CKEditorUploadingWidget
+
+class MyCustomCKEditorWidget(CKEditorUploadingWidget):
+   template_name = "templates/widget.html"
+
+
+SIMPLE_API_KEY = {
+    "FERNET_SECRET": "QG-heVovSsExvMqgRd6jwvwq6tL7ImPmMOVxiPVWXzQ=",
+    "API_KEY_LIFETIME": 365,
+    "AUTHENTICATION_KEYWORD_HEADER": "Api-Key",
+    "ROTATION_PERIOD": timedelta(days=7),
+    "ROTATION_FERNET_SECRET": ""
 }

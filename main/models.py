@@ -7,6 +7,12 @@ from shopbot.settings import ROOT
 from django.forms.models import model_to_dict
 import uuid
 from django.utils.crypto import get_random_string
+from ckeditor.fields import RichTextField
+
+class Permissions(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="permissionss")
+    gpt = models.BooleanField(default = True)
+
 
 # Create your models here.
 class Site(models.Model):
@@ -56,7 +62,7 @@ class ImagineOrder(models.Model):
     type = models.CharField(max_length=15, null=True)
 
     def __str__(self):
-        return str(self.user.username) + ' - ' +  str(self.code) + ' - ' + str(self.percent) + ' - ' + str(self.progress) + ' - ' + str(self.done)
+        return str(self.user.username) + ' - ' +  str(self.code) + ' - ' + str(self.percent) + ' - ' + str(self.progress) + ' - ' + str(self.done) + ' - ' + self.text
 
     def get_age(self):
         return age(self.date)
@@ -64,7 +70,7 @@ class ImagineOrder(models.Model):
     def get_variations(self):
         list = []
         for item in self.variations.all().order_by('-id'):
-            list.append({'text': item.text, 'image': item.image, 'get_age': item.get_age(), 'type': item.type})
+            list.append({'text': item.text, 'image': item.image, 'get_age': item.get_age(), 'type': item.type, 'code': item.code})
         return list
 
     def username(self):
@@ -73,7 +79,7 @@ class ImagineOrder(models.Model):
 class Package(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add= True)
-    amount = models.IntegerField()
+    amount = models.FloatField()
     expired = models.BooleanField(default = False)
 
     def __str__(self):
@@ -91,6 +97,12 @@ class Image(models.Model):
     def get_image(self):
         return ROOT + 'media/' + self.image.name
 
+
+class File(models.Model):
+    file = models.FileField(upload_to='file-ex')
+
+    def get_image(self):
+        return ROOT + 'media/' + self.file.name
 
 class FaceSwaped(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
@@ -136,3 +148,77 @@ class Bonus(models.Model):
 class UsedBonus(models.Model):
     user= models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     bonus= models.ForeignKey(Bonus, on_delete=models.CASCADE, null=True, blank=True)
+
+
+class GPTChatRoom(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    date = models.DateTimeField(auto_now_add= True)
+    first_message = models.CharField(max_length=1000, null=True)
+
+    def get_age(self):
+        return age(self.date)
+
+class GPTMessages(models.Model):
+    room = models.ForeignKey(GPTChatRoom, on_delete=models.CASCADE, null=True, blank=True, related_name='chats')
+    role = models.CharField(max_length=8)
+    message = models.CharField(max_length=1000)
+    date = models.DateTimeField(auto_now_add= True)
+
+
+class ImageDetail(models.Model):
+    title = models.CharField(max_length=100)
+    prompt = models.CharField(max_length=100)
+    image = models.ImageField(upload_to='param')
+
+    def get_image(self):
+        return ROOT + 'media/' + self.image.name
+
+class AddDetail(models.Model):
+    title = models.CharField(max_length=100)
+    prompt = models.CharField(max_length=100)
+    image = models.ImageField(upload_to='param')
+
+    def get_image(self):
+        return ROOT + 'media/' + self.image.name
+    
+class Mimic(models.Model):
+    title = models.CharField(max_length=100)
+    prompt = models.CharField(max_length=100)
+    image = models.ImageField(upload_to='param')
+
+    def get_image(self):
+        return ROOT + 'media/' + self.image.name
+
+
+class Parameter(models.Model):
+    title = models.CharField(max_length=100)
+    prompt = models.CharField(max_length=100)
+    minimum = models.FloatField(null = True)
+    maximum = models.FloatField(null = True)
+    default = models.FloatField(null = True)
+
+
+class Size(models.Model):
+    title = models.CharField(max_length=100)
+    prompt = models.CharField(max_length=100)
+    image = models.ImageField(upload_to='param')
+
+    def get_image(self):
+        return ROOT + 'media/' + self.image.name
+
+
+
+class Post(models.Model):
+    content = RichTextField()
+    files = models.FileField(upload_to='file', null=True)
+
+    def get_file(self):
+        if not self.files:
+            return None
+        return ROOT + 'media/' + self.files.name
+
+class Training(models.Model):
+    text = models.FileField(upload_to='train', null=True)
+
+    def __str__(self):
+        return self.text.name

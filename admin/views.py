@@ -19,7 +19,10 @@ class Users(APIView):
             balance = 0
             for items in Package.objects.filter(user = item, expired=False):
                 balance = balance + items.amount
-            list.append({'id': item.id ,'username': item.username, 'balance': balance})
+            if hasattr(item, 'permissionss'):
+                list.append({'id': item.id ,'username': item.username, 'balance': balance, 'permissions':{'gpt': item.permissionss.gpt}})
+            else: 
+                list.append({'id': item.id ,'username': item.username, 'balance': balance, 'permissions':{'gpt': True}})
         return Response(list)
 
 class Transactions(APIView):
@@ -153,3 +156,40 @@ class Bonuss(APIView):
         query = Bonus.objects.all().order_by('-id')
         serializer = BonusSerializer(query, many=True)
         return Response(serializer.data)
+
+
+
+class Gptp(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, id):
+        user = User.objects.get(id= id).permissionss
+        user.gpt = True
+        user.save()
+        query = User.objects.all()
+        list = []
+        for item in query:
+            balance = 0
+            for items in Package.objects.filter(user = item, expired=False):
+                balance = balance + items.amount
+            if hasattr(item, 'permissionss'):
+                list.append({'id': item.id ,'username': item.username, 'balance': balance, 'permissions':{'gpt': item.permissionss.gpt}})
+            else: 
+                list.append({'id': item.id ,'username': item.username, 'balance': balance, 'permissions':{'gpt': True}})
+        return Response(list)
+
+    def put(self, request, id):
+        user = User.objects.get(id= id).permissionss
+        user.gpt = False
+        user.save()
+        query = User.objects.all()
+        list = []
+        for item in query:
+            balance = 0
+            for items in Package.objects.filter(user = item, expired=False):
+                balance = balance + items.amount
+            if hasattr(item, 'permissionss'):
+                list.append({'id': item.id ,'username': item.username, 'balance': balance, 'permissions':{'gpt': item.permissionss.gpt}})
+            else: 
+                list.append({'id': item.id ,'username': item.username, 'balance': balance, 'permissions':{'gpt': True}})
+        return Response(list)
