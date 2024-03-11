@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from .models import ImagineOrder, Package, Pretrans, Image, Transaction, FaceSwaped, Plan, Bonus, Coupon, UsedBonus, GPTChatRoom, GPTMessages, ImageDetail, AddDetail, Mimic, Parameter, Size, Post, Permissions
+from .models import ImagineOrder, Package, Pretrans, Image, Transaction, FaceSwaped, Plan, Bonus, Coupon, UsedBonus, GPTChatRoom, GPTMessages, ImageDetail, AddDetail, Mimic, Parameter, Size, Post, Permissions, Phone
 from django.contrib.auth.models import User
 import requests
 import json
@@ -27,19 +27,39 @@ from django.core.mail import EmailMultiAlternatives
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 from django.urls import reverse
-
+import random
+from ippanel import Client
 from django_rest_passwordreset.signals import reset_password_token_created
 import random
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import DirectoryLoader
 from langchain.indexes import VectorstoreIndexCreator
 from openai import OpenAI
+#from langchain.llms import HuggingFacePipeline
+#from transformers import AutoTokenizer, AutoModelForCausalLM
+
+def sms(phone , vcode , pattern = 'nqdr0ifi03fapdu'):
+    sms = Client("J2dm_5aAB4OjTEAWGSs5JFm5aNKJDs_e0G2uTMu8bRk=")
+    pattern_values = {
+        "verification-code": f"{vcode}",
+    }
+
+    bulk_id = sms.send_pattern(
+        pattern,
+        "+983000505",
+        f"+98{phone}",
+        pattern_values,
+    )
+
+    sms.get_message(bulk_id)
+    return True
+
 from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, LLMPredictor, ServiceContext, StorageContext, load_index_from_storage, PromptHelper
 
 import os
-os.environ['OPENAI_API_KEY'] = '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'
+os.environ['OPENAI_API_KEY'] = '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'
 
-gpt_client = OpenAI(api_key= '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')
+gpt_client = OpenAI(api_key= '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')
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
@@ -150,6 +170,88 @@ class send_request(APIView):
         except requests.exceptions.ConnectionError:
             return {'status': False, 'code': 'connection error'}
 
+
+class SMSVerify(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, phone):
+        phone, _ = Phone.objects.get_or_create(number = phone)
+        phone.code = random.randint(123456, 999999)
+        phone.save()
+        if phone.verify:
+            return Response()
+        else:
+            phone.code = random.randint(123456, 999999)
+            phone.save()    
+            try:
+                sms(phone.number , phone.code)
+            except:
+                pass
+            return Response(status = 401)
+
+    def post(self, request, phone):
+        phone = Phone.objects.get(number = phone)
+        if phone.code == int(request.data['code']):
+            phone.verify = True
+            phone.save()
+            return Response(True)
+        return Response(status = 401)
+        
+    def put(self, request, phone):
+        phone = Phone.objects.get(number = phone)
+        if not request.user.is_authenticated:
+            user = User.objects.get(username = request.data['username'])
+        else:
+            user = request.user
+        phone.user = user
+        phone.save()
+        return Response()
+
+
+class CheckVerify(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        phone= Phone.objects.filter(user = request.user)
+        if len(phone):
+            if phone.last().verify:
+                return Response()
+        return Response(status= 401)
+
+class SMSVerifyUser(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, phone):
+        phone, _ = Phone.objects.get_or_create(number = phone)
+        phone.code = random.randint(123456, 999999)
+        phone.save()
+        if phone.verify:
+            return Response()
+        else:
+            phone.code = random.randint(123456, 999999)
+            phone.save()    
+            try:
+                sms(phone.number , phone.code)
+            except:
+                pass
+            return Response(status = 401)
+
+    def post(self, request, phone):
+        phone = Phone.objects.get(number = phone)
+        if phone.code == int(request.data['code']):
+            phone.verify = True
+            phone.save()
+            return Response(True)
+        return Response(status = 401)
+        
+    def put(self, request, phone):
+        phone = Phone.objects.get(number = phone)
+        user = User.objects.get(id = request.user.id)
+        phone.user = user
+        phone.save()
+        return Response()
+
+        
 class verify(APIView):
     permission_classes = [AllowAny]
 
@@ -274,7 +376,7 @@ class Gpt(APIView):
             query = GPTMessages.objects.filter(room = room)
             serializer = GPTMessagesSerializer(query, many=True)
             
-            return Response({'result': serializer.data, 'id': room.id}) 
+            return Response(result.choices[0].message.content) 
         except Exception as error:
             return Response(str(error),status=status.HTTP_400_BAD_REQUEST)   
 
@@ -330,30 +432,55 @@ class FaceSwap(APIView):
             })
             
             headers = {
-            'Authorization': 'Bearer 3c64be29-a698-4a52-976f-b2dfb9ca08b0',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODQwMSwiZW1haWwiOiJsbGltb29haUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImxsaW1vb2FpQGdtYWlsLmNvbSIsImlhdCI6MTcwNTYwOTY3NH0.V17JuXug9v8klMenrpw6OGTiVsU8LANrHPBpD9IoCjI',
             'Content-Type': 'application/json'
             }
-            img = Image()
             filename = str(uuid.uuid4())
             response = requests.request("POST", url, headers=headers, data=payload)
-            if response.status_code == 200:
-                wal = wals.first()
-                wal.amount = wal.amount - 4
-                wal.save()
-                res = response
-                response = response.content
-                image = IM.open(BytesIO(response))
-                image.save('/midjourney-back/media/fs/' + filename + '.jpg') 
-
-                swaped = FaceSwaped(user = request.user, image = ROOT + '/media/fs/' + filename + '.jpg')
+            if response.json()['success']:            
+                swaped = FaceSwaped(user = request.user, code=response.json()['messageId'])
                 swaped.save()
                 serializer = FaceSwapedSerializer(swaped)
-
                 return Response(serializer.data)    
             else:
                 return Response(response,status=status.HTTP_400_BAD_REQUEST) 
                     
+class FaceSwapResult(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request, ids):
+        if not request.user.is_authenticated:
+            query = FaceSwaped.objects.filter(code = ids)
+            item = query.last()
+            url = "https://api.mymidjourney.ai/api/v1/midjourney/message/"
+            headers = {
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODQwMSwiZW1haWwiOiJsbGltb29haUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImxsaW1vb2FpQGdtYWlsLmNvbSIsImlhdCI6MTcwNTYwOTY3NH0.V17JuXug9v8klMenrpw6OGTiVsU8LANrHPBpD9IoCjI',
+            'Content-Type': 'application/json'
+            }
 
+            response = requests.request("GET", url + ids, headers=headers)
+            response = response.json()
+            return Response(response)
+        wals = Package.objects.filter(user=request.user , expired = False, amount__gte=1)
+        query = FaceSwaped.objects.filter(code = ids)
+        item = query.last()
+        url = "https://api.mymidjourney.ai/api/v1/midjourney/message/"
+        headers = {
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODQwMSwiZW1haWwiOiJsbGltb29haUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImxsaW1vb2FpQGdtYWlsLmNvbSIsImlhdCI6MTcwNTYwOTY3NH0.V17JuXug9v8klMenrpw6OGTiVsU8LANrHPBpD9IoCjI',
+        'Content-Type': 'application/json'
+        }
+
+        response = requests.request("GET", url + item.code, headers=headers)
+        response = response.json()
+        if not 'uri' in response:
+            return Response(response,status=status.HTTP_400_BAD_REQUEST) 
+        wal = wals.first()
+        wal.amount = wal.amount - 4
+        wal.save()
+        item.image = response['uri']
+        item.save()
+        serializer = FaceSwapedSerializer(item)
+        return Response(serializer.data)
 
 class ImagineResult(APIView):
     permission_classes = [AllowAny]
@@ -387,10 +514,10 @@ class ImagineResult(APIView):
         response = requests.request("GET", url + item.code, headers=headers)
         response = response.json()
         if not 'uri' in response:
-            if not 'progress' in response:
+            if 'error' in response:
                 item.progress = 'incomplete'
                 item.done = True
-            elif response['progress'] == 'incomplete':
+            elif 'progress' in response:
                 item.percent = response['progress']
         else:
             if response['progress'] == 100:
@@ -444,8 +571,8 @@ class Button(APIView):
 class MyImagine(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, format=None):
-        query = ImagineOrder.objects.filter(user = request.user, order=None).order_by('-id')
+    def get(self, request, page):
+        query = ImagineOrder.objects.filter(user = request.user, order=None).order_by('-id')[((int(page)-1)*5):(int(page) * 5)]
         serializer = ImagineOrderSerializer(query, many=True)
         return Response(serializer.data)
 

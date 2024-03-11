@@ -76,7 +76,8 @@ class FaceSwapedSerializer(serializers.ModelSerializer):
             "username",
             "fsid", 
             "image", 
-            "get_age"
+            "get_age",
+            "code"
         )
 
 class PlanSerializer(serializers.ModelSerializer):

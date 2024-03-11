@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Site, Link, ImagineOrder, Image, Transaction, Package, Pretrans, FaceSwaped, Plan, Coupon, Bonus, GPTMessages, GPTChatRoom, ImageDetail, AddDetail, Mimic, Parameter, Size, Permissions, Post, Training, File
+from .models import Site, Link, ImagineOrder, Image, Transaction, Package, Pretrans, FaceSwaped, Plan, Coupon, Bonus, GPTMessages, GPTChatRoom, ImageDetail, AddDetail, Mimic, Parameter, Size, Permissions, Post, Training, File, Phone
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from django.contrib import admin
@@ -56,3 +56,4 @@ admin.site.register(Size)
 admin.site.register(Permissions)
 admin.site.register(Training)
 admin.site.register(File)
+admin.site.register(Phone)

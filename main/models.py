@@ -8,11 +8,20 @@ from django.forms.models import model_to_dict
 import uuid
 from django.utils.crypto import get_random_string
 from ckeditor.fields import RichTextField
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.contrib.auth.models import User
+
+
+class Phone(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null = True)
+    number = models.CharField(max_length=12, unique = True)
+    verify = models.BooleanField(default = False)
+    code = models.IntegerField(null = True)
 
 class Permissions(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="permissionss")
     gpt = models.BooleanField(default = True)
-
 
 # Create your models here.
 class Site(models.Model):
@@ -107,8 +116,9 @@ class File(models.Model):
 class FaceSwaped(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     fsid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    image = models.URLField()
+    image = models.URLField(null=True)
     date = models.DateTimeField(auto_now_add= True)
+    code = models.CharField(max_length = 1000, null=True)
 
     def __str__(self):
         return str(self.fsid)

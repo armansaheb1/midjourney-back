@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path('imagine-result/<ids>', views.ImagineResult.as_view(), name="ImagineResult"),
+    path('faceswap-result/<ids>', views.FaceSwapResult.as_view(), name="faceswapResult"),
     path('imagine', views.Imagine.as_view(), name="imagine"),
     path('gpt', views.Gpt.as_view(), name="imagine"),
     path('gpt/<ids>', views.Gpt.as_view(), name="imagine"),
@@ -11,7 +12,7 @@ urlpatterns = [
     path('faceswap', views.FaceSwap.as_view(), name="faceswap"),
     path('faceswap/<ids>', views.FaceSwap.as_view(), name="faceswap"),
     path('user', views.GetUser.as_view(), name="user"),
-    path('my-imagines', views.MyImagine.as_view(), name="user"),
+    path('my-imagines/<page>', views.MyImagine.as_view(), name="user"),
     path('my-faceswap', views.MyFaceSwap.as_view(), name="user"),
     path('charge', views.Charge.as_view(), name="user"),
     path('request', views.send_request.as_view(), name="user"),
@@ -30,4 +31,7 @@ urlpatterns = [
     path('posts', views.Posts.as_view(), name="user"),
     path('posts/<id>', views.Posts.as_view(), name="user"),
     path('support', views.Support.as_view(), name="user"),
+    path('sms-verify/<phone>', views.SMSVerify.as_view(), name="user"),
+    path('sms-verify/<phone>', views.SMSVerifyUser.as_view(), name="user"),
+    path('check-verify', views.CheckVerify.as_view(), name="user"),
 ]

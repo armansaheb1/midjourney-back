@@ -67,5 +67,7 @@ class GPTMessages(models.Model):
     room = models.ForeignKey(GPTChatRoom, on_delete=models.CASCADE, null=True, blank=True, related_name='chats')
     role = models.CharField(max_length=8)
     message = models.CharField(max_length=1000)
+    context = models.TextField( null=True)
+    contexts = models.JSONField( null=True)
     date = models.DateTimeField(auto_now_add= True)
     like = models.IntegerField(default = 0, validators=[MaxValueValidator(2), MinValueValidator(0)])
