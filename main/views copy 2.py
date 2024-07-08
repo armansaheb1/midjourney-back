@@ -57,9 +57,9 @@ def sms(phone , vcode , pattern = 'nqdr0ifi03fapdu'):
 from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, LLMPredictor, ServiceContext, StorageContext, load_index_from_storage, PromptHelper
 
 import os
-os.environ['OPENAI_API_KEY'] = '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'
+os.environ['OPENAI_API_KEY'] = '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'
 
-gpt_client = OpenAI(api_key= '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')
+gpt_client = OpenAI(api_key= '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')
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):

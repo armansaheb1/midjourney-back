@@ -19,6 +19,12 @@ class Phone(models.Model):
     verify = models.BooleanField(default = False)
     code = models.IntegerField(null = True)
 
+    def __str__(self):
+        if self.user:
+            return self.user.username + ' - ' + str(self.number) + ' - ' + str(self.verify)
+        else:
+            return self.number
+
 class Permissions(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="permissionss")
     gpt = models.BooleanField(default = True)

@@ -57,9 +57,9 @@ def sms(phone , vcode , pattern = 'nqdr0ifi03fapdu'):
 from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, LLMPredictor, ServiceContext, StorageContext, load_index_from_storage, PromptHelper
 
 import os
-os.environ['OPENAI_API_KEY'] = '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'
+os.environ['OPENAI_API_KEY'] = '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'
 
-gpt_client = OpenAI(api_key= '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')
+gpt_client = OpenAI(api_key= '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')
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
@@ -177,17 +177,13 @@ class SMSVerify(APIView):
     def get(self, request, phone):
         phone, _ = Phone.objects.get_or_create(number = phone)
         phone.code = random.randint(123456, 999999)
-        phone.save()
-        if phone.verify:
-            return Response()
-        else:
-            phone.code = random.randint(123456, 999999)
-            phone.save()    
-            try:
-                sms(phone.number , phone.code)
-            except:
-                pass
+        phone.save()    
+        try:
+            sms(phone.number , phone.code)
             return Response(status = 401)
+        except Exception as ex:
+            return Response(status = 401)
+        return Response(status = 401)
 
     def post(self, request, phone):
         phone = Phone.objects.get(number = phone)
@@ -364,21 +360,18 @@ class Gpt(APIView):
         for item in GPTMessages.objects.filter(room = room):
             lists.append( {"role": item.role, "content": item.message})
         lists.append({"role": 'user', "content": request.data['text']})
-        try:
-            result = self.get_text(lists)
-            message = GPTMessages(room = room, message = result.choices[0].message.content, role = result.choices[0].message.role)
-            message.save()
-            wal = wals.first()
-            if (result.usage.total_tokens/ 1000 > wal.amount):
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            wal.amount = wal.amount - (result.usage.total_tokens/ 1000)
-            wal.save()
-            query = GPTMessages.objects.filter(room = room)
-            serializer = GPTMessagesSerializer(query, many=True)
-            
-            return Response(result.choices[0].message.content) 
-        except Exception as error:
-            return Response(str(error),status=status.HTTP_400_BAD_REQUEST)   
+        result = self.get_text(lists)
+        message = GPTMessages(room = room, message = result.choices[0].message.content, role = result.choices[0].message.role)
+        message.save()
+        wal = wals.first()
+        if (result.usage.total_tokens/ 1000 > wal.amount):
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        wal.amount = wal.amount - (result.usage.total_tokens/ 1000)
+        wal.save()
+        query = GPTMessages.objects.filter(room = room)
+        serializer = GPTMessagesSerializer(query, many=True)
+        
+        return Response(result.choices[0].message.content) 
 
 class MyGPT(APIView):
     permission_classes = [IsAuthenticated]
@@ -498,7 +491,7 @@ class ImagineResult(APIView):
             response = requests.request("GET", url + item.code, headers=headers)
             response = response.json()
             return Response(response)
-        wals = Package.objects.filter(user=request.user , expired = False, amount__gte=1)
+        wals = Package.objects.filter(user=request.user , expired = False, amount__gt=3)
         query = ImagineOrder.objects.filter(code = ids)
         if len(query) and query.last().progress == 100:
             if query.last().image:

@@ -47,15 +47,7 @@ INSTALLED_APPS = [
     "ApiService"
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://172.93.231.240",
-    "http://localhost:8080",
-    "https://limoo.ai",
-    "https://www.limoo.ai",
-]
-CORS_ALLOW_ALL_ORIGINS = True
 
-SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -68,6 +60,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
+CORS_ORIGIN_ALLOW_ALL = True   
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 ROOT_URLCONF = 'shopbot.urls'
 FORM_RENDERER = 'django.forms.renderers.TemplatesSetting'
@@ -165,7 +159,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {
         "file": {
-            "level": "ERROR",
+            "level": "DEBUG",
             "class": "logging.FileHandler",
             "filename": "debug.log",
         },
@@ -173,7 +167,7 @@ LOGGING = {
     "loggers": {
         "django": {
             "handlers": ["file"],
-            "level": "ERROR",
+            "level": "DEBUG",
             "propagate": True,
         },
     },

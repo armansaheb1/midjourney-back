@@ -44,7 +44,7 @@ def distances_from_embeddings(
     return distances
 
 
-client = OpenAI(api_key= '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')
+client = OpenAI(api_key= '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')
 
 
 class Gpt(APIView):
