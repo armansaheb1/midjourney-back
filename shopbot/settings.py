@@ -14,7 +14,7 @@ SECRET_KEY = 'django-insecure-u3(hg*ch^cjnx4o(7d(!*d+%r5fd$1bfenaq%j9dwszrpt718c
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['172.93.231.240', 'limoo.ai', 'www.limoo.ai']
+ALLOWED_HOSTS = ['*']
 
 from datetime import timedelta
 # Application definition

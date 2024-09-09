@@ -1,11 +1,11 @@
 from django.shortcuts import render
-from main.models import ImagineOrder, Package, Pretrans, Image, Transaction, Plan, FaceSwaped,Bonus
+from main.models import ImagineOrder, Package, Pretrans, Image, Transaction, Plan, FaceSwaped, Link, Bonus
 from django.contrib.auth.models import User
 import requests
 import json
 from rest_framework.views import APIView 
 from rest_framework.response import Response
-from main.serializers import UserSerializer, ImagineOrderSerializer, ImageSerializer, TransactionSerializer, PlanSerializer, FaceSwapedSerializer, BonusSerializer
+from main.serializers import UserSerializer, ImagineOrderSerializer, ImageSerializer, TransactionSerializer, PlanSerializer, FaceSwapedSerializer, BonusSerializer, LinkSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework import status
 
@@ -193,3 +193,54 @@ class Gptp(APIView):
             else: 
                 list.append({'id': item.id ,'username': item.username, 'balance': balance, 'permissions':{'gpt': True}})
         return Response(list)
+
+class Bonuss(APIView):
+    permission_classes = [IsAdminUser]
+
+
+    def get(self, request):
+        query = Bonus.objects.all().order_by('-id')
+        serializer = BonusSerializer(query, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = BonusSerializer(data= request.data)
+        if serializer.is_valid():
+            serializer.save()
+            query = Bonus.objects.all().order_by('-id')
+            serializer = BonusSerializer(query, many=True)
+            return Response(serializer.data)
+        return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, ids):
+        query = Bonus.objects.get(id = ids)
+        query.delete()
+        query = Bonus.objects.all().order_by('-id')
+        serializer = BonusSerializer(query, many=True)
+        return Response(serializer.data)
+
+
+class Links(APIView):
+    permission_classes = [IsAdminUser]
+
+
+    def get(self, request):
+        query = Link.objects.all().order_by('-id')
+        serializer = LinkSerializer(query, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = LinkSerializer(data= request.data)
+        if serializer.is_valid():
+            serializer.save()
+            query = Link.objects.all().order_by('-id')
+            serializer = LinkSerializer(query, many=True)
+            return Response(serializer.data)
+        return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, ids):
+        query = Link.objects.get(id = ids)
+        query.delete()
+        query = Link.objects.all().order_by('-id')
+        serializer = LinkSerializer(query, many=True)
+        return Response(serializer.data)

@@ -9,8 +9,10 @@ urlpatterns = [
     path('charge', views.Charge.as_view(), name="user"),
     path('plans', views.Plans.as_view(), name="user"),
     path('plans/<ids>', views.Plans.as_view(), name="Plans"),
-    path('bonus', views.Bonuss.as_view(), name="user"),
     path('gptp/<id>', views.Gptp.as_view(), name="user"),
+    path('bonus', views.Bonuss.as_view(), name="user"),
     path('bonus/<ids>', views.Bonuss.as_view(), name="bonus"),
+    path('links', views.Links.as_view(), name="user"),
+    path('links/<ids>', views.Links.as_view(), name="Link"),
     path('faceswap', views.FaceSwap.as_view(), name="user"),
 ]

@@ -1,11 +1,11 @@
 from django.shortcuts import render
-from .models import ImagineOrder, Package, Pretrans, Image, Transaction, FaceSwaped, Plan, Bonus, Coupon, UsedBonus, GPTChatRoom, GPTMessages, ImageDetail, AddDetail, Mimic, Parameter, Size, Post, Permissions, Phone
+from .models import ImagineOrder, Package, Pretrans, Image, Transaction, FaceSwaped, Plan, Bonus, Coupon, UsedBonus, GPTChatRoom, GPTMessages, ImageDetail, AddDetail, Mimic, Parameter, Size, Post, Permissions, Phone, Link
 from django.contrib.auth.models import User
 import requests
 import json
 from rest_framework.views import APIView 
 from rest_framework.response import Response
-from .serializers import UserSerializer, ImagineOrderSerializer, ImageSerializer, FaceSwapedSerializer, PlanSerializer, GPTMessagesSerializer, GPTChatRoomSerializer, OptionSerializer, ParamSerializer, PostSerializer
+from .serializers import UserSerializer, ImagineOrderSerializer, ImageSerializer, FaceSwapedSerializer, PlanSerializer, GPTMessagesSerializer, GPTChatRoomSerializer, OptionSerializer, ParamSerializer, PostSerializer, LinkSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.conf import settings
 import requests
@@ -35,8 +35,16 @@ from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import DirectoryLoader
 from langchain.indexes import VectorstoreIndexCreator
 from openai import OpenAI
-#from langchain.llms import HuggingFacePipeline
-#from transformers import AutoTokenizer, AutoModelForCausalLM
+import os
+from langchain_community.document_loaders import CSVLoader
+from langchain_openai import OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
+from langchain.chains import create_retrieval_chain
+from langchain_core.documents import Document
+from langchain_community.vectorstores import FAISS
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.chains.combine_documents import create_stuff_documents_chain
 
 def sms(phone , vcode , pattern = 'nqdr0ifi03fapdu'):
     sms = Client("J2dm_5aAB4OjTEAWGSs5JFm5aNKJDs_e0G2uTMu8bRk=")
@@ -54,12 +62,12 @@ def sms(phone , vcode , pattern = 'nqdr0ifi03fapdu'):
     sms.get_message(bulk_id)
     return True
 
-from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, LLMPredictor, ServiceContext, StorageContext, load_index_from_storage, PromptHelper
-
+from llama_index.core import SimpleDirectoryReader, GPTVectorStoreIndex, ServiceContext, StorageContext, load_index_from_storage, PromptHelper
+from llama_index.legacy import LLMPredictor
 import os
-os.environ['OPENAI_API_KEY'] = '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'
+os.environ['OPENAI_API_KEY'] = 'sk-proj-1jW5M2kizSK5ZC24NxRMT3BlbkFJ9KXvJkwW2k3hxi9P3KNr'
 
-gpt_client = OpenAI(api_key= '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')
+gpt_client = OpenAI(api_key= 'sk-proj-1jW5M2kizSK5ZC24NxRMT3BlbkFJ9KXvJkwW2k3hxi9P3KNr')
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
@@ -320,6 +328,41 @@ class Imagine(APIView):
             return Response(response,status=status.HTTP_400_BAD_REQUEST)
 
 
+class Imagine2(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, format=None):
+        balance = 0
+        wals = Package.objects.filter(user=request.user , expired = False, amount__gte=1)
+        for item in wals:
+            balance = balance + item.amount
+        if balance == 0:
+            return Response('موجودی شما کافی نیست',status = status.HTTP_402_PAYMENT_REQUIRED)
+        if balance == 1:
+            if len(ImagineOrder.objects.filter(user = request.user, done= False)):
+                return Response('You Have A Pending order And موجودی شما کافی نیست for Another One',status = status.HTTP_402_PAYMENT_REQUIRED)
+        url = "https://api.midjourneyapi.xyz/mj/v2/imagine"
+        payload = json.dumps({
+        "prompt": request.data['text'],
+        "process_mode": 'fast'
+        })
+        headers = {
+        "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+        }
+        response = requests.request("POST", url, headers=headers, data=payload)
+        try:
+            if response.json()['success']:
+                imagine = ImagineOrder(user=request.user,text = request.data['text'], code=response.json()['task_id'])
+                imagine.save()
+                serializer = ImagineOrderSerializer(imagine)
+                return Response(serializer.data)      
+            else:
+                return Response(response,status=status.HTTP_400_BAD_REQUEST)  
+        except Exception as inst:
+            return Response(response,status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 class Gpt(APIView):
     permission_classes = [IsAuthenticated]
@@ -417,26 +460,21 @@ class FaceSwap(APIView):
         if balance < 4:
             return Response('موجودی شما کافی نیست',status = status.HTTP_402_PAYMENT_REQUIRED)
         else:
-            url = "https://api.mymidjourney.ai/api/v1/midjourney/faceswap"
-
-            payload = json.dumps({
-            "source": request.data['text'][0],
-            "target": request.data['text'][1],
-            })
-            
+            url = "https://api.goapi.xyz/api/face_swap/v1/async"
+            data = '{\"swap_image\":"'+str(request.data['text'][0])+'",\"target_image\": "'+str(request.data['text'][1])+'",\"result_type\": "' + 'url' +'"\r\n\t}'
+            payloads = {"swap_image" : str(request.data['text'][0]), "target_image" : str(request.data['text'][0]), "result_type" : "url"}
             headers = {
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODQwMSwiZW1haWwiOiJsbGltb29haUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImxsaW1vb2FpQGdtYWlsLmNvbSIsImlhdCI6MTcwNTYwOTY3NH0.V17JuXug9v8klMenrpw6OGTiVsU8LANrHPBpD9IoCjI',
-            'Content-Type': 'application/json'
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
             }
             filename = str(uuid.uuid4())
-            response = requests.request("POST", url, headers=headers, data=payload)
-            if response.json()['success']:            
-                swaped = FaceSwaped(user = request.user, code=response.json()['messageId'])
+            response = requests.request("POST", url, headers=headers, data=data)
+            if response.json()['message'] == "success":            
+                swaped = FaceSwaped(user = request.user, code=response.json()['data']['task_id'])
                 swaped.save()
                 serializer = FaceSwapedSerializer(swaped)
                 return Response(serializer.data)    
             else:
-                return Response(response,status=status.HTTP_400_BAD_REQUEST) 
+                return Response(response, status=400) 
                     
 class FaceSwapResult(APIView):
     permission_classes = [AllowAny]
@@ -445,35 +483,37 @@ class FaceSwapResult(APIView):
         if not request.user.is_authenticated:
             query = FaceSwaped.objects.filter(code = ids)
             item = query.last()
-            url = "https://api.mymidjourney.ai/api/v1/midjourney/message/"
+            url = "https://api.goapi.xyz/api/face_swap/v1/fetch"
             headers = {
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODQwMSwiZW1haWwiOiJsbGltb29haUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImxsaW1vb2FpQGdtYWlsLmNvbSIsImlhdCI6MTcwNTYwOTY3NH0.V17JuXug9v8klMenrpw6OGTiVsU8LANrHPBpD9IoCjI',
-            'Content-Type': 'application/json'
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
             }
 
-            response = requests.request("GET", url + ids, headers=headers)
+            response = requests.request("POST", json={"task_id": ids},url= url, headers=headers)
             response = response.json()
             return Response(response)
-        wals = Package.objects.filter(user=request.user , expired = False, amount__gte=1)
+        wals = Package.objects.filter(user=request.user , expired = False, amount__gt=4)
         query = FaceSwaped.objects.filter(code = ids)
         item = query.last()
-        url = "https://api.mymidjourney.ai/api/v1/midjourney/message/"
+        url = "https://api.goapi.xyz/api/face_swap/v1/fetch"
         headers = {
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODQwMSwiZW1haWwiOiJsbGltb29haUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImxsaW1vb2FpQGdtYWlsLmNvbSIsImlhdCI6MTcwNTYwOTY3NH0.V17JuXug9v8klMenrpw6OGTiVsU8LANrHPBpD9IoCjI',
-        'Content-Type': 'application/json'
+        "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
         }
 
-        response = requests.request("GET", url + item.code, headers=headers)
+        response = requests.request("POST", json={"task_id": ids},url= url, headers=headers)
         response = response.json()
-        if not 'uri' in response:
-            return Response(response,status=status.HTTP_400_BAD_REQUEST) 
-        wal = wals.first()
-        wal.amount = wal.amount - 4
-        wal.save()
-        item.image = response['uri']
-        item.save()
-        serializer = FaceSwapedSerializer(item)
-        return Response(serializer.data)
+        if response['data']['status'] == "failed":
+            item.progress = 'incomplete'
+            item.done = True
+
+        if response['data']['status'] == "success":
+            
+            wal = wals.first()
+            wal.amount = wal.amount - 4
+            wal.save()
+            item.image = response['data']['image']
+            item.save()
+            serializer = FaceSwapedSerializer(item)
+            return Response(serializer.data)
 
 class ImagineResult(APIView):
     permission_classes = [AllowAny]
@@ -510,8 +550,9 @@ class ImagineResult(APIView):
             if 'error' in response:
                 item.progress = 'incomplete'
                 item.done = True
-            elif 'progress' in response:
-                item.percent = response['progress']
+            elif 'process_time' in response:
+                item.percent = int(response['process_time'])
+                item.save()
         else:
             if response['progress'] == 100:
                 wal = wals.first()
@@ -528,6 +569,61 @@ class ImagineResult(APIView):
         item.save()
         serializer = ImagineOrderSerializer(item)
         return Response(serializer.data)
+
+
+class ImagineResult2(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request, ids):
+        if not request.user.is_authenticated:
+            query = ImagineOrder.objects.filter(code = ids)
+            item = query.last()
+            url = "https://api.midjourneyapi.xyz/mj/v2/fetch"
+            headers = {
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+            }
+
+            response = requests.request("POST", url=url, json={"task_id" : ids}, headers=headers)
+            response = response.json()
+            return Response(response)
+        wals = Package.objects.filter(user=request.user , expired = False, amount__gt=3)
+        query = ImagineOrder.objects.filter(code = ids)
+        if len(query) and query.last().progress == 100:
+            if query.last().image:
+                serializer = ImagineOrderSerializer(query.last())
+                return Response(serializer.data)
+        item = query.last()
+        url = "https://api.midjourneyapi.xyz/mj/v2/fetch"
+        headers = {
+        "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+        }
+
+        response = requests.request("POST", url=url, json={"task_id" : ids}, headers=headers)
+        respons = response.json()
+
+        if respons['status'] == "failed":
+            item.progress = 'incomplete'
+            item.done = True
+        elif respons['status'] == "finished":
+            response = respons['task_result']
+            if respons['status'] == "finished":
+                wal = wals.first()
+                wal.amount = wal.amount - 1
+                wal.save()
+            item.result = [response['discord_image_url']]
+            item.image = response['discord_image_url']
+            if respons['status'] == "finished":
+                item.done = True
+            item.bid =respons['task_id']
+            item.percent = 100
+            if 'actions' in response:
+                item.buttons = response['actions']
+        elif 'process_time' in response:
+            item.percent = int(response['process_time'])
+        item.save()
+        serializer = ImagineOrderSerializer(item)
+        return Response(serializer.data)
+
 
 class Button(APIView):
     permission_classes = [AllowAny]
@@ -560,6 +656,186 @@ class Button(APIView):
             serializer = ImagineOrderSerializer(imagine)
             return Response(serializer.data)        
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class Button2(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request, format=None):
+        request.data['btn'] = request.data['btn'].replace('upscale1', 'myupscale1').replace('upscale2', 'myupscale2').replace('upscale3', 'myupscale3').replace('upscale4', 'myupscale4').replace('variation1', 'myvariation1').replace('variation2', 'myvariation2').replace('variation3', 'myvariation3').replace('variation4', 'myvariation4')
+        balance = 0
+        wals = Package.objects.filter(user=request.user , expired = False)
+        for item in wals:
+            balance = balance + item.amount
+        if balance == 0:
+            return Response('موجودی شما کافی نیست',status = status.HTTP_402_PAYMENT_REQUIRED)
+        
+        if 'inpaint' in request.data['btn']:
+            url = "https://api.midjourneyapi.xyz/mj/v2/inpaint"
+            payload = '{\"origin_task_id\":"'+str(request.data['code'])+'",\"mask\": "'+request.data['btn'].replace('data:image/jpeg;base64,', '').replace("inpain_", '')+'"\r\n\t}'
+            headers = {
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if not response.json()['success']:
+                return Response(response.json()['message'],status = status.HTTP_402_PAYMENT_REQUIRED)
+            if response.json()['task_id']:
+                order= ImagineOrder.objects.get(bid = request.data['code'])
+                if order.order:
+                    order = order.order
+                imagine = ImagineOrder(user=request.user,text = order.text, code=response.json()['task_id'], order=order , act = 'u', type=request.data['btn'])
+                imagine.save()
+                serializer = ImagineOrderSerializer(imagine)
+                return Response(serializer.data)        
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        elif 'myup' in request.data['btn']:
+            url = "https://api.midjourneyapi.xyz/mj/v2/upscale"
+            myid = int(request.data['btn'][-1])
+            payload = '{\"origin_task_id\":"'+str(request.data['code'])+'",\"index\": "'+str(int(myid))+'"\r\n\t}'
+            headers = {
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if not response.json()['success']:
+                return Response(response.json()['message'],status = status.HTTP_402_PAYMENT_REQUIRED)
+            if response.json()['task_id']:
+                order= ImagineOrder.objects.get(bid = request.data['code'])
+                if order.order:
+                    order = order.order
+                imagine = ImagineOrder(user=request.user,text = order.text, code=response.json()['task_id'], order=order , act = 'u', type=request.data['btn'])
+                imagine.save()
+                serializer = ImagineOrderSerializer(imagine)
+                return Response(serializer.data)        
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        elif 'myvar' in request.data['btn']:
+            url = "https://api.midjourneyapi.xyz/mj/v2/variation"
+            myid = int(request.data['btn'][-1])
+            
+            data = '{\"origin_task_id\":"'+str(request.data['code'])+'",\"index\": "'+str(int(myid))+'"\r\n\t}'
+            headers = {
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+            }
+
+            response = requests.post( url, headers=headers, data=data)
+            if not response.json()['success']:
+                return Response(response.json()['message'],status = status.HTTP_402_PAYMENT_REQUIRED)
+            if response.json()['task_id']:
+                order= ImagineOrder.objects.get(bid = request.data['code'])
+                if order.order:
+                    order = order.order
+                imagine = ImagineOrder(user=request.user,text = order.text, code=response.json()['task_id'], order=order , act = 'v', type=request.data['btn'])
+                imagine.save()
+                serializer = ImagineOrderSerializer(imagine)
+                return Response(serializer.data)        
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        elif 'reroll' in request.data['btn']:
+            url = "https://api.midjourneyapi.xyz/mj/v2/reroll"
+            payload = json.dumps({
+                "origin_task_id": request.data['code'],
+                })
+            headers = {
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if not response.json()['success']:
+                return Response(response.json()['message'],status = status.HTTP_402_PAYMENT_REQUIRED)
+            if response.json()['task_id']:
+                order= ImagineOrder.objects.get(bid = request.data['code'])
+                if order.order:
+                    order = order.order
+                imagine = ImagineOrder(user=request.user,text = order.text, code=response.json()['task_id'], order=order , act = 'v', type=request.data['btn'])
+                imagine.save()
+                serializer = ImagineOrderSerializer(imagine)
+                return Response(serializer.data)        
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        elif 'pan' in request.data['btn']:
+            url = "https://api.midjourneyapi.xyz/mj/v2/pan"
+            payload = json.dumps({
+                "origin_task_id": request.data['code'],
+                "direction" : request.data['btn'].split('_')[1]
+                })
+            headers = {
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if not response.json()['success']:
+                return Response(response.json()['message'],status = status.HTTP_402_PAYMENT_REQUIRED)
+            if response.json()['task_id']:
+                order= ImagineOrder.objects.get(bid = request.data['code'])
+                if order.order:
+                    order = order.order
+                imagine = ImagineOrder(user=request.user,text = order.text, code=response.json()['task_id'], order=order , act = 'v', type=request.data['btn'])
+                imagine.save()
+                serializer = ImagineOrderSerializer(imagine)
+                return Response(serializer.data)        
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        
+        elif 'upscale' in request.data['btn']:
+            url = "https://api.midjourneyapi.xyz/mj/v2/upscale"
+            payload = '{\"origin_task_id\":"'+str(request.data['code'])+'",\"index\": "'+request.data['btn'].split('_')[1]+'"\r\n\t}'
+            headers = {
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if not response.json()['success']:
+                return Response(response.json()['message'],status = status.HTTP_402_PAYMENT_REQUIRED)
+            if response.json()['task_id']:
+                order= ImagineOrder.objects.get(bid = request.data['code'])
+                if order.order:
+                    order = order.order
+                imagine = ImagineOrder(user=request.user,text = order.text, code=response.json()['task_id'], order=order , act = 'u', type=request.data['btn'])
+                imagine.save()
+                serializer = ImagineOrderSerializer(imagine)
+                return Response(serializer.data)        
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        
+        elif 'outpaint' in request.data['btn']:
+            url = "https://api.midjourneyapi.xyz/mj/v2/outpaint"
+            payload = '{\"origin_task_id\":"'+str(request.data['code'])+'",\"zoom_ratio\": "'+request.data['btn'].split('_')[1].replace('x', '')+'"\r\n\t}'
+            headers = {
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if not response.json()['success']:
+                return Response(response.json()['message'],status = status.HTTP_402_PAYMENT_REQUIRED)
+            if response.json()['task_id']:
+                order= ImagineOrder.objects.get(bid = request.data['code'])
+                if order.order:
+                    order = order.order
+                imagine = ImagineOrder(user=request.user,text = order.text, code=response.json()['task_id'], order=order , act = 'u', type=request.data['btn'])
+                imagine.save()
+                serializer = ImagineOrderSerializer(imagine)
+                return Response(serializer.data)        
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        
+        else:
+            url = "https://api.midjourneyapi.xyz/mj/v2/variation"
+            data = '{\"origin_task_id\":"'+str(request.data['code'])+'",\"index\": "'+request.data['btn']+'"\r\n\t}'
+            headers = {
+            "X-API-KEY": "87cbb0af63bdc0f287d0c8149899e51b75a4f4b75bfc3d98768792282968db0e"
+            }
+
+            response = requests.request("POST", url, headers=headers, data=data)
+            if not response.json()['success']:
+                return Response(response.json()['message'],status = status.HTTP_402_PAYMENT_REQUIRED)
+            if response.json()['task_id']:
+                order= ImagineOrder.objects.get(bid = request.data['code'])
+                if order.order:
+                    order = order.order
+                imagine = ImagineOrder(user=request.user,text = order.text, code=response.json()['task_id'], order=order , act = 'v', type=request.data['btn'])
+                imagine.save()
+                serializer = ImagineOrderSerializer(imagine)
+                return Response(serializer.data)        
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        
+        
 
 class MyImagine(APIView):
     permission_classes = [IsAuthenticated]
@@ -709,4 +985,13 @@ class Posts(APIView):
     def post(self, request, id):
         query = Post.objects.get(id = id)
         serializer = PostSerializer(query)
+        return Response(serializer.data)
+
+
+
+    
+class Links(APIView):
+    def get(self, request):
+        query = Link.objects.all().order_by('-id')
+        serializer = LinkSerializer(query, many=True)
         return Response(serializer.data)

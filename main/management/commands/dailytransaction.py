@@ -1,4 +1,4 @@
-from main.models import Site, Link, ImagineOrder, Image, Transaction
+from main.models import Link
 from django.core.management.base import BaseCommand, CommandError
 import requests
 from urllib.parse import urlparse
@@ -9,6 +9,5 @@ import datetime
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
-        for item in ImagineOrder.objects.filter(done=False):
-            item.done = True
-            item.save()
+        for item in Link.objects.all():
+            item.delete()

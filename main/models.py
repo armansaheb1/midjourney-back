@@ -29,24 +29,6 @@ class Permissions(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="permissionss")
     gpt = models.BooleanField(default = True)
 
-# Create your models here.
-class Site(models.Model):
-    name = models.CharField(max_length=20)
-
-    def __str__(self) -> str:
-        return self.name
-
-
-class Link(models.Model):
-    link=models.URLField()
-    sizes = models.JSONField(null=True, blank=True)
-    site = models.ForeignKey(Site, on_delete=models.CASCADE)
-    size = models.BooleanField(default = False)
-    have = models.BooleanField(default = True, editable= False)
-
-    def __str__(self) -> str:
-        return self.link
-
 
 class Transaction(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -77,7 +59,7 @@ class ImagineOrder(models.Model):
     type = models.CharField(max_length=15, null=True)
 
     def __str__(self):
-        return str(self.user.username) + ' - ' +  str(self.code) + ' - ' + str(self.percent) + ' - ' + str(self.progress) + ' - ' + str(self.done) + ' - ' + self.text
+        return str(self.user.username) + ' - ' +  str(self.code) + ' - ' + str(self.percent) + ' - ' + str(self.progress) + ' - ' + str(self.done) + ' - ' + self.text + ' - ' + str(self.type)
 
     def get_age(self):
         return age(self.date)
@@ -235,6 +217,14 @@ class Post(models.Model):
 
 class Training(models.Model):
     text = models.FileField(upload_to='train', null=True)
+
+    def __str__(self):
+        return self.text.name
+
+
+class Link(models.Model):
+    title = models.TextField()
+    link = models.TextField()
 
     def __str__(self):
         return self.text.name

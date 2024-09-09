@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import ImagineOrder, Image, Transaction, FaceSwaped, Plan, Bonus, GPTMessages, GPTChatRoom, Parameter, Permissions,AddDetail , Post
+from .models import ImagineOrder, Image, Transaction, FaceSwaped, Plan, Bonus, GPTMessages, GPTChatRoom, Parameter, Permissions,AddDetail , Post, Link
 
 class PermissionsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -156,4 +156,14 @@ class PostSerializer(serializers.ModelSerializer):
             "id",
             "content",
             "get_file"
+        )
+
+
+class LinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Link
+        depth = 1
+        fields = (
+            "title",
+            "link",
         )

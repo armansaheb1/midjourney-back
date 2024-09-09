@@ -14,7 +14,8 @@ from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import DirectoryLoader
 from langchain.indexes import VectorstoreIndexCreator
 from openai import OpenAI
-from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, LLMPredictor, ServiceContext, StorageContext, load_index_from_storage, PromptHelper
+from llama_index.core import SimpleDirectoryReader, GPTVectorStoreIndex, ServiceContext, StorageContext, load_index_from_storage, PromptHelper
+from llama_index.legacy import LLMPredictor
 from .models import GPTChatRoom, GPTMessages, User
 import os
 from .serializers import GPTChatRoomSerializer, GPTMessagesSerializer
